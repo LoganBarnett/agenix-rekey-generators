@@ -80,7 +80,7 @@ another secret lists that secret as a dependency.
 | ~stalwart-dkim-key~                 | Ed25519 DKIM key                                |                                                                      | ~.pub~                    |
 | ~template-file~                     | Text with ~%name%~ filled from dependencies     | ~settings.template~ or ~settings.templateFile~                       |                           |
 | ~tls-ca-root~                       | Self-signed root CA key                         | ~settings.tls~                                                       | ~.crt~                    |
-| ~tls-signed-certificate~            | Leaf key signed by a root                       | ~settings.fqdn~, ~settings.root-certificate~, the root as dependency | ~.crt~, the root's ~.srl~ |
+| ~tls-signed-certificate~            | Leaf key signed by a root                       | ~settings.fqdn~, ~settings.root-certificate~, ~settings.validity~    | ~.crt~, the root's ~.srl~ |
 | ~wireguard-priv~                    | WireGuard private key                           |                                                                      | ~.pub~                    |
 | ~yaml-secret-file~                  | Flat YAML of dependencies                       | One dependency per key                                               |                           |
 
@@ -92,8 +92,10 @@ another secret lists that secret as a dependency.
 an intermediate.
 
 ~tls-signed-certificate~ reads ~settings.fqdn~ and ~settings.root-certificate~,
-the root's ~age.secrets~ entry, and lists that entry as its one dependency.  The
-~.srl~ file tracks the serial numbers the root has issued and is checked in.
+the root's ~age.secrets~ entry, and lists that entry as its one dependency.
+~settings.validity~ is the certificate's lifetime in days.  It defaults to 47,
+where the CA/Browser Forum caps public certificates from 2029.  The ~.srl~ file
+tracks the serial numbers the root has issued and is checked in.
 
 * Contributing
 
