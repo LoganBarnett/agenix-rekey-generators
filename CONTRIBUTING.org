@@ -1,0 +1,45 @@
+#+title:     Contributing
+#+author:    Logan Barnett
+#+email:     logustus@gmail.com
+#+date:      <2026-11-09 Mon>
+#+language:  en
+#+file_tags:
+#+tags:
+
+The generators are an API that other people's secrets depend on.  The bar for a
+change is higher than in a personal configuration.
+
+* Public surface
+
+A generator's name, the ~settings~ keys it reads, the order of its dependencies,
+and the files it writes beside the secret are all public API.  Changing one
+silently changes a secret somewhere.
+
+1. A new generator is one file under ~generators~ named after it, listed in that
+   directory's ~default.nix~, and described in the README table.
+2. A generator reads ~secret.settings~ and never a bare ~settings~ argument.
+   Upstream agenix-rekey passes only the former.
+3. A generator that writes a file beside the secret hands it to ~gitAdd~ and
+   takes ~gitAdd~ as an argument.  No other generator mentions it.
+4. Nothing carries a site, family, or owner name.
+
+* Tests
+
+Every generator has a fixture under ~tests~ and renders under it.  A generator
+without a fixture fails the suite.  Checks run through ~nix flake check~.
+
+GitHub runs ~nix flake check~ and ~treefmt --fail-on-change~ on every pull
+request.  Both must pass before a merge into ~main~.  The rule lives in
+~.github/branch-protection.json~ and is applied by hand, because the token a
+workflow runs with cannot administer branch protection:
+
+#+begin_src sh :results none :exports code
+gh api --method PUT \
+  repos/LoganBarnett/agenix-rekey-generators/branches/main/protection \
+  --input .github/branch-protection.json
+#+end_src
+
+* Documentation
+
+Documents are org-mode files.  Every document is reachable by following links
+from ~README.org~.  Each link carries a one-line summary.

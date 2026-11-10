@@ -1,0 +1,105 @@
+#+title:     agenix-rekey-generators
+#+author:    Logan Barnett
+#+email:     logustus@gmail.com
+#+date:      <2026-11-09 Mon>
+#+language:  en
+#+file_tags:
+#+tags:
+
+Secret generators for [[https://github.com/oddlama/agenix-rekey][agenix-rekey]].  Each one fills ~age.generators.<name>~.  A
+secret names it with ~generator.script~ and ~agenix rekey generate~ produces the
+value.  They work on NixOS, nix-darwin, and Home Manager alike.
+
+* Using the generators
+
+Add the flake as an input and import the module beside agenix-rekey's own.
+
+#+begin_src nix :exports code
+{
+  inputs.agenix-rekey-generators.url =
+    "github:LoganBarnett/agenix-rekey-generators";
+  # ...
+  modules = [
+    agenix-rekey.nixosModules.default
+    agenix-rekey-generators.nixosModules.default
+  ];
+}
+#+end_src
+
+~darwinModules.default~ and ~homeManagerModules.default~ are the same module.  A
+flake that wants one generator without the module takes it from
+~lib.generators~.
+
+A secret then names a generator.  A generator that derives its value from
+another secret lists that secret as a dependency.
+
+#+begin_src nix :exports code
+{
+  age.secrets.ldap-root-pass.generator.script = "passphrase";
+  age.secrets.ldap-root-pass-hashed.generator = {
+    script = "slapd-hashed";
+    dependencies = [ config.age.secrets.ldap-root-pass ];
+  };
+}
+#+end_src
+
+* Conventions
+
+1. ~dependencies~ is a list.  A generator that takes one dependency reads the
+   first.  A generator that takes many reads them in order.
+2. A generator that needs more than its dependencies reads ~settings~ on the
+   secret.  The table names the keys.
+3. A generator that writes a file beside the secret, such as a public key, hands
+   it to ~gitAdd~ so ~--add-to-git~ covers it.  ~gitAdd~ is
+   [[https://github.com/oddlama/agenix-rekey/pull/165][agenix-rekey pull request 165]].  Until it merges, those generators need
+   [[https://github.com/LoganBarnett/agenix-rekey][the fork]] that carries it.
+4. ~hex~ and ~base64~ replace the generators agenix-rekey ships.  Without
+   ~settings.length~ they produce the same output.
+5. A secret a service reads as an ~EnvironmentFile~ belongs in that unit's
+   ~restartTriggers~.
+
+* Generators
+
+| Generator                           | Output                                          | Reads                                                                | Writes beside the secret  |
+|-------------------------------------+-------------------------------------------------+----------------------------------------------------------------------+---------------------------|
+| ~attic-server-jwt-environment-file~ | atticd's RS256 JWT secret as an EnvironmentFile |                                                                      |                           |
+| ~base64~                            | Random base64                                   | ~settings.length~ bytes, default 32                                  |                           |
+| ~base64url~                         | Random URL-safe base64                          | ~settings.length~ bytes, default 60                                  |                           |
+| ~cli-safe-passphrase~               | Five xkcdpass words joined by hyphens           |                                                                      |                           |
+| ~environment-file~                  | EnvironmentFile of ~environment-variable~ lines | One dependency per line                                              |                           |
+| ~environment-variable~              | One ~KEY=value~ line                            | ~settings.field~, one dependency                                     |                           |
+| ~hex~                               | Random hex                                      | ~settings.length~ bytes, default 24                                  |                           |
+| ~htpasswd~                          | bcrypt htpasswd entry                           | ~settings.username~, one dependency per entry                        |                           |
+| ~long-passphrase~                   | Ten xkcdpass words                              |                                                                      |                           |
+| ~long-passphrase-hashed~            | SHA-512 crypt hash                              | One dependency                                                       |                           |
+| ~nix-cache-signing-key~             | Nix binary cache signing key                    | ~settings.keyName~                                                   | ~.pub~                    |
+| ~openhab-pbkdf2~                    | openHAB ~users.json~ admin entry                | One dependency                                                       |                           |
+| ~rsa-private-key~                   | 4096 bit RSA key as one PEM line                |                                                                      |                           |
+| ~slapd-hashed~                      | Argon2 ~userPassword~ for OpenLDAP              | One dependency                                                       |                           |
+| ~ssh-ed25519-with-pub~              | Ed25519 SSH key                                 |                                                                      | ~.pub~                    |
+| ~stalwart-dkim-key~                 | Ed25519 DKIM key                                |                                                                      | ~.pub~                    |
+| ~template-file~                     | Text with ~%name%~ filled from dependencies     | ~settings.template~ or ~settings.templateFile~                       |                           |
+| ~tls-ca-root~                       | Self-signed root CA key                         | ~settings.tls~                                                       | ~.crt~                    |
+| ~tls-signed-certificate~            | Leaf key signed by a root                       | ~settings.fqdn~, ~settings.root-certificate~, the root as dependency | ~.crt~, the root's ~.srl~ |
+| ~wireguard-priv~                    | WireGuard private key                           |                                                                      | ~.pub~                    |
+| ~yaml-secret-file~                  | Flat YAML of dependencies                       | One dependency per key                                               |                           |
+
+** TLS
+
+~tls-ca-root~ reads ~settings.tls~ with ~domain~, ~validity~ in days, and
+~subject~ with ~country~, ~state~, ~location~, ~organization~, and
+~organizational-unit~.  The root is name constrained to ~domain~ and cannot sign
+an intermediate.
+
+~tls-signed-certificate~ reads ~settings.fqdn~ and ~settings.root-certificate~,
+the root's ~age.secrets~ entry, and lists that entry as its one dependency.  The
+~.srl~ file tracks the serial numbers the root has issued and is checked in.
+
+* Contributing
+
+[[file:CONTRIBUTING.org]] sets the bar for a change.  Every generator is part of a
+public API.
+
+* License
+
+AGPL-3.0-or-later.  [[file:LICENSE]] holds the full text.
