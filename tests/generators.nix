@@ -173,6 +173,36 @@ in
     );
     expected = true;
   };
+  testSignedCertificateDefaultsToFortySevenDays = {
+    expr = lib.hasInfix "-days 47 " scripts.tls-signed-certificate;
+    expected = true;
+  };
+  testSignedCertificateReadsValidity = {
+    expr = lib.hasInfix "-days 90 " (
+      render "tls-signed-certificate" (
+        fixtures.tls-signed-certificate
+        // {
+          settings = fixtures.tls-signed-certificate.settings // {
+            validity = 90;
+          };
+        }
+      )
+    );
+    expected = true;
+  };
+  testSignedCertificateNeedsAnIntegerValidity = {
+    expr = rejects (
+      render "tls-signed-certificate" (
+        fixtures.tls-signed-certificate
+        // {
+          settings = fixtures.tls-signed-certificate.settings // {
+            validity = "90";
+          };
+        }
+      )
+    );
+    expected = true;
+  };
   testSignedCertificateNeedsAnFqdn = {
     expr = rejects (
       render "tls-signed-certificate" {
