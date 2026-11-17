@@ -98,6 +98,11 @@ let
   names = predicate: lib.attrNames (lib.filterAttrs (_: predicate) scripts);
   rejects = value: !(builtins.tryEval (builtins.deepSeq value value)).success;
 
+  # Generators whose output is a password someone may type.
+  passphrases = [
+    "cli-safe-passphrase"
+    "long-passphrase"
+  ];
   # Generators that write a file beside the secret.  Each must hand it to
   # gitAdd, and no other generator may mention gitAdd.
   writesCompanion = [
@@ -129,6 +134,14 @@ in
     expected = lib.attrNames (
       lib.filterAttrs (_: fixture: (fixture.deps or [ ]) != [ ]) fixtures
     );
+  };
+  # A password's hash and its typed form carry no trailing newline, so the
+  # passphrase generators print none either.
+  testPassphrasesStripTheNewline = {
+    expr = lib.filter (
+      name: lib.hasSuffix "| tr -d '\\n'" scripts.${name}
+    ) passphrases;
+    expected = passphrases;
   };
 
   testHexDefaultMatchesUpstream = {
